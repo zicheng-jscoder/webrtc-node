@@ -1,0 +1,9 @@
+{
+  "apps": [
+    {
+      "name": "web-rtc",
+      "script": "npm run prod",
+      "restart": true
+    }
+  ]
+}

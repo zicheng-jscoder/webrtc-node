@@ -1,0 +1,31 @@
+{
+  "name": "web-site-node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "cross-env NODE_ENV=local nodemon ./app.js",
+    "prod": "cross-env NODE_ENV=prod node ./app.js",
+    "test": "cross-env NODE_ENV=test node ./app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.24.0",
+    "body-parser": "~1.17.1",
+    "cookie-parser": "^1.4.6",
+    "express": "^4.17.1",
+    "http-proxy-middleware": "^2.0.1",
+    "morgan": "^1.10.0",
+    "serve-favicon": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.2",
+    "@types/express": "^4.17.13",
+    "@types/http-proxy-middleware": "^1.0.0",
+    "@types/morgan": "^1.9.3",
+    "cross-env": "^7.0.3",
+    "nodemon": "^2.0.20"
+  }
+}
