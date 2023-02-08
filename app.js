@@ -38,13 +38,17 @@ const express_1 = __importDefault(require("express"));
 const path_1 = __importDefault(require("path"));
 const temp_1 = require("./config/temp");
 const http_proxy_middleware_1 = require("http-proxy-middleware");
+const fs_1 = __importDefault(require("fs"));
+const https_1 = __importDefault(require("https"));
 const morgan_1 = __importDefault(require("morgan"));
 const bodyParser = __importStar(require("body-parser"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
+const socket_io_1 = require("socket.io");
+const webrtc_1 = __importDefault(require("./service/webrtc"));
 const app = (0, express_1.default)();
 app.all('*', (req, res, next) => {
     let origin = req.headers.origin;
-    res.header('Access-Control-Allow-Headers', 'SameSite,Authorization,Content-Type,Referer,Origin');
+    res.header('Access-Control-Allow-Headers', '*');
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Access-Control-Allow-Methods', 'PUT,POST,GET,DELETE,OPTIONS');
     res.header('Access-Control-Allow-Credentials', 'true');
@@ -58,6 +62,10 @@ app.set('view engine', 'html');
 app.use(temp_1.config.publicPath, express_1.default.static(__dirname + `/build`)); // 静态目录
 app.use((0, morgan_1.default)('dev'));
 app.use((0, cookie_parser_1.default)(temp_1.config.appName));
+const server = https_1.default.createServer({
+    key: fs_1.default.readFileSync(path_1.default.join(__dirname, 'ssl/cert.key')),
+    cert: fs_1.default.readFileSync(path_1.default.join(__dirname, 'ssl/cert.crt')),
+}, app);
 // 代理
 for (let key in temp_1.config.proxy) {
     const item = temp_1.config.proxy[key];
@@ -82,6 +90,17 @@ for (let key in temp_1.config.proxy) {
 }
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.listen(temp_1.config.port, () => {
-    console.log(`服务启动在${temp_1.config.port}`);
+const io = new socket_io_1.Server(server, {
+    /* options */
+    cors: {
+        origin: (requestOrigin) => requestOrigin,
+        methods: ['GET', 'POST'],
+        credentials: true,
+    },
+    allowEIO3: true,
+    //   transports: ['websocket'],
+});
+new webrtc_1.default(io);
+server.listen(temp_1.config.port, () => {
+    console.log(`服务启动在${temp_1.config.port}，${new Date()}`);
 });

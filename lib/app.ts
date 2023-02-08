@@ -10,24 +10,27 @@ import express from 'express'
 import path from 'path'
 import { config } from './config/temp'
 import { createProxyMiddleware, Options } from 'http-proxy-middleware'
-import type * as http from 'http'
+import type * as httpType from 'http'
+import fs from 'fs'
+import https from 'https'
 import logger from 'morgan'
 import * as bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
+import { Server } from 'socket.io'
+import ICEServer from './service/webrtc'
+
 const app = express()
 
 app.all('*', (req, res, next) => {
   let origin = req.headers.origin
-  res.header(
-    'Access-Control-Allow-Headers',
-    'SameSite,Authorization,Content-Type,Referer,Origin'
-  )
+  res.header('Access-Control-Allow-Headers', '*')
   res.header('Access-Control-Allow-Origin', origin)
   res.header('Access-Control-Allow-Methods', 'PUT,POST,GET,DELETE,OPTIONS')
   res.header('Access-Control-Allow-Credentials', 'true')
   // res.header('Content-Type', 'text/html;charset=utf-8')
   next()
 })
+
 // 去除express标识
 app.set('x-powered-by', false)
 app.set('views', path.join(__dirname, 'views'))
@@ -37,7 +40,13 @@ app.use(config.publicPath, express.static(__dirname + `/build`)) // 静态目录
 app.use(logger('dev'))
 
 app.use(cookieParser(config.appName))
-
+const server = https.createServer(
+  {
+    key: fs.readFileSync(path.join(__dirname, 'ssl/cert.key')),
+    cert: fs.readFileSync(path.join(__dirname, 'ssl/cert.crt')),
+  },
+  app
+)
 // 代理
 for (let key in config.proxy) {
   const item = config.proxy[key]
@@ -45,9 +54,9 @@ for (let key in config.proxy) {
   let options: Options = {
     ...item,
     onProxyReq: function (
-      proxyReq: http.ClientRequest,
-      req: http.IncomingMessage,
-      res: http.ServerResponse,
+      proxyReq: httpType.ClientRequest,
+      req: httpType.IncomingMessage,
+      res: httpType.ServerResponse,
       target: any
     ) {
       Object.keys(item.pathRewrite).map((rule) => {
@@ -56,9 +65,9 @@ for (let key in config.proxy) {
       })
     },
     onProxyRes: function (
-      proxyRes: http.IncomingMessage,
-      req: http.IncomingMessage,
-      res: http.ServerResponse
+      proxyRes: httpType.IncomingMessage,
+      req: httpType.IncomingMessage,
+      res: httpType.ServerResponse
     ) {
       // 删除跨域名
       delete proxyRes.headers['access-control-allow-credentials']
@@ -76,10 +85,24 @@ for (let key in config.proxy) {
   let rule = config.publicPath + key
   app.use(rule, createProxyMiddleware(options))
 }
+
 app.use(bodyParser.urlencoded({ extended: true }))
 
 app.use(bodyParser.json())
 
-app.listen(config.port, () => {
-  console.log(`服务启动在${config.port}`)
+const io = new Server(server, {
+  /* options */
+  cors: {
+    origin: (requestOrigin: string | undefined) => requestOrigin,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  allowEIO3: true,
+  //   transports: ['websocket'],
+})
+
+new ICEServer(io)
+
+server.listen(config.port, () => {
+  console.log(`服务启动在${config.port}，${new Date()}`)
 })
